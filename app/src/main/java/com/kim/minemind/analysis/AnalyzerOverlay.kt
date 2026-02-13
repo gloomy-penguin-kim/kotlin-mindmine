@@ -4,6 +4,7 @@ import com.kim.minemind.analysis.rules.Rule
 import com.kim.minemind.domain.Board
 import com.kim.minemind.domain.CellState
 import com.kim.minemind.analysis.Conflict
+import com.kim.minemind.analysis.frontier.Component
 
 /**
  * Snapshot of solver/analyzer output consumed by UI.

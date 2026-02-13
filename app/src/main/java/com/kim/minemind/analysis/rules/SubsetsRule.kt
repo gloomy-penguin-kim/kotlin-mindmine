@@ -9,25 +9,13 @@ fun subsetsRule (
     comp: Component,
     moves: RuleAggregator
 ) {
-    fun isProperSubset(a: BitSet, b: BitSet): Boolean {
-        // a ⊆ b  <=>  (a ∩ b) == a
-        val inter = (a.clone() as BitSet).apply { and(b) } // inter = a & b
-        if (inter != a) return false
-        return a != b // proper subset (not equal)
-    }
-
-    fun difference(b: BitSet, a: BitSet): BitSet {
-        // b \ a
-        return (b.clone() as BitSet).apply { andNot(a) }
-    }
-
     fun processMovesForMask(mask: BitSet, action: Action, reasons: MutableSet<String>) {
         var bit = mask.nextSetBit(0)
         while (bit >= 0) {
             val gid = comp.localToGlobal[bit]  // IMPORTANT: bit is the local index
             // optionally skip if already revealed/flagged
             if (action == Action.OPEN) {
-                moves.addRule(mask,
+                moves.addRule(mask.clone() as BitSet,
                     comp.localToGlobal,
                     Rule(gid=gid,
                         type=RuleType.SAFE,
@@ -35,7 +23,7 @@ fun subsetsRule (
                     )
                 )
             } else if (action == Action.FLAG) {
-                moves.addRule(mask,
+                moves.addRule(mask.clone() as BitSet,
                     comp.localToGlobal,
                     Rule(gid=gid,
                         type=RuleType.MINE,
@@ -48,10 +36,8 @@ fun subsetsRule (
     }
 
     val constraints = comp.constraints
-
     for (i in constraints.indices) {
-        for (j in constraints.indices) {
-            if (i == j) continue
+        for (j in i + 1 until constraints.size) {
 
             val a = constraints[i].mask
             val b = constraints[j].mask
@@ -63,6 +49,8 @@ fun subsetsRule (
                 // diff = B \ A
                 val diff = difference(b, a)
                 val diffSize = diff.cardinality()
+
+                if (diff.isEmpty) continue
 
                 // if all in B\A are SAFE
                 if (remA == remB) {

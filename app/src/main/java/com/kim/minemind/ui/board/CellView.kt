@@ -31,7 +31,7 @@ private val PROBABILITY_BUCKETS = listOf(
     ProbabilityBucket("~",   0.35f,  0.45f),
     ProbabilityBucket("+",   0.45f,  0.55f),
     ProbabilityBucket("*",   0.55f,  0.65f),
-    ProbabilityBucket("#",   0.65f,  0.75f),
+    ProbabilityBucket("#",   0.65f,   0.75f),
     ProbabilityBucket("%",   0.75f,  0.85f),
     ProbabilityBucket("&",   0.85f,  0.95f),
     ProbabilityBucket("F",   0.95f,  1.0f),
@@ -42,6 +42,7 @@ fun probabilityToGlyph(p: Float?): String {
     return PROBABILITY_BUCKETS.firstOrNull { v >= it.min && v <= it.max }?.glyph ?: ""
 }
 
+
 fun probabilityBucketFor(p: Float?): ProbabilityBucket? {
     val v = p ?: return null
     return PROBABILITY_BUCKETS.firstOrNull { v >= it.min && v <= it.max }
@@ -50,9 +51,9 @@ fun probabilityBucketFor(p: Float?): ProbabilityBucket? {
 
 fun componentColor(id: Int): Color {
     val palette = listOf(
-        Color(0xFFE57373),
         Color(0xFF64B5F6),
         Color(0xFF81C784),
+        Color(0xFFE57373),
         Color(0xFFFFD54F),
         Color(0xFFBA68C8),
         Color(0xFF4DB6AC),
@@ -74,22 +75,22 @@ fun CellView(
 
     val overlay = cell.overlay
 
+    val cellProbability = cell.overlay.probability ?: -1f
+
     // ---------- Background ----------
     val bgColor = when {
-        cell.isFlagged -> Color.DarkGray
 
         cell.isExploded -> Color.Red
 
-        overlay.conflict -> Color(0xFFFF6B6B)
+        overlay.conflict != null -> Color(0xFFFF6B6B)
 
-        // ⭐ Component Debug Coloring
-        overlay.componentId != null &&
-                !cell.isRevealed &&
-                !cell.isFlagged ->
-            componentColor(overlay.componentId).copy(alpha = 0.35f)
+        cell.isFlagged -> Color.DarkGray
 
-        overlay.forcedFlag -> Color(0xFF7B1FA2)
-        overlay.forcedOpen -> Color(0xFF1976D2)
+//        overlay.componentId != null && !cell.isRevealed && !cell.isFlagged ->
+//            overlay.componentColor!!.copy(alpha = 0.25f)
+
+        overlay.conflict == null && cellProbability >= 0 && overlay.forcedFlag -> Color(0xFF7B1FA2)
+        overlay.conflict == null && cellProbability >= 0 && overlay.forcedOpen -> Color(0xFF1976D2)
 
         cell.isRevealed -> Color.LightGray
         else -> Color.DarkGray
@@ -132,8 +133,11 @@ fun CellView(
                 if (overlay.forcedOpen) {
                     glyph = "O"
                 }
-                if (overlay.forcedFlag) {
+                else if (overlay.forcedFlag) {
                     glyph = "F"
+                }
+                else if (overlay.conflict != null) {
+                    glyph = "C"
                 }
 
                 if (glyph.isNotEmpty()) {

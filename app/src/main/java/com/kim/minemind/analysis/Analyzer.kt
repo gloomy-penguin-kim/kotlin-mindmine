@@ -39,6 +39,11 @@ class Analyzer {
                 probabilities
             )
 
+        println("reasons")
+        println(ruleResult.reasons)
+        println("conflicts")
+        println(conflicts)
+
         // 5️⃣ Build overlay
         return AnalyzerOverlay(
             probabilities = probabilities,

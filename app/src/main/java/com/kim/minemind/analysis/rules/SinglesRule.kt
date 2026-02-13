@@ -16,20 +16,22 @@ fun singlesRule (
 
         if (remaining == 0) {
             var bit = mask.nextSetBit(0)
+            val clonedMask = mask.clone() as BitSet
+
             while (bit >= 0) {
                 val gid = comp.localToGlobal[bit]
 
-                moves.addRule((mask.clone() as BitSet),
+                moves.addRule(clonedMask,
                     comp.localToGlobal,
                     Rule(gid=gid,
                         type=RuleType.SAFE,
-                        reasons=mutableSetOf("Singles: remaining == 0 are SAFE")
+                        reasons=mutableSetOf("Singles SAFE: remaining==0")
                     )
                 )
                 bit = mask.nextSetBit(bit + 1)
             }
         }
-        if (remaining == scopeSize) {
+        else if (remaining == scopeSize) {
             var bit = mask.nextSetBit(0)
             while (bit >= 0) {
                 val gid = comp.localToGlobal[bit]
@@ -38,7 +40,7 @@ fun singlesRule (
                     comp.localToGlobal,
                     Rule(gid=gid,
                         type=RuleType.MINE,
-                        reasons=mutableSetOf("Singles: remaining == |scope| are MINES")
+                        reasons=mutableSetOf("Singles MINE: remaining==scope")
                     )
                 )
                 bit = mask.nextSetBit(bit + 1)

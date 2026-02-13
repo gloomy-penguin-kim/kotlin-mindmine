@@ -1,5 +1,6 @@
 package com.kim.minemind.state
 
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import com.kim.minemind.analysis.Analyzer
 import com.kim.minemind.analysis.AnalyzerOverlay
@@ -11,7 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.kim.minemind.domain.Board
 import com.kim.minemind.domain.CellState
-import com.kim.minemind.domain.findFlagConflicts
 import kotlin.random.Random
 
 class GameViewModel : ViewModel() {
@@ -23,22 +23,79 @@ class GameViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
 
+    private val _menuState = MutableStateFlow(MenuState())
+    val menuState: StateFlow<MenuState> = _menuState.asStateFlow()
+
     private val analyzer = Analyzer()
     private var lastSignature: BoardSignature? = null
     private var lastOverlay: AnalyzerOverlay? = null
 
     private var firstClickDone = false
 
-
-
-
     private val history = ArrayDeque<GameSnapshot>()
 
     private val redo = ArrayDeque<GameSnapshot>()   // optional but free
 
+    private val componentColors = mutableMapOf<Int, Color>()
+
+    private var prevGroups: Map<Int, Set<Int>> = emptyMap()
+    private var prevColors: Map<Int, Color> = emptyMap()
+
+    private var nextColorIndex = 0
+
+    private val palette = listOf(
+        Color(0xFFEF5350),
+        Color(0xFF42A5F5),
+        Color(0xFF66BB6A),
+        Color(0xFFFFCA28),
+        Color(0xFFAB47BC),
+        Color(0xFF26C6DA),
+        Color(0xFFFF7043),
+        Color(0xFF8D6E63)
+    )
+
+
+
+
+    fun onMenuAction(menuState: MenuItem) {
+
+        println(menuState)
+        if (menuState in setOf(MenuItem.OPEN, MenuItem.FLAG, MenuItem.CHORD, MenuItem.INFO)) {
+            _menuState.value = _menuState.value.copy(
+                selected = menuState
+            )
+        }
+        else if (menuState == MenuItem.ANALYZE) {
+            _menuState.value = _menuState.value.copy(
+                isAnalyze = !_menuState.value.isAnalyze
+            )
+            _uiState.value = _uiState.value.copy(
+                isEnumerating = false
+            )
+        }
+        else if (menuState == MenuItem.VERIFY) {
+            _menuState.value = _menuState.value.copy(
+                isVerify = !_menuState.value.isVerify
+            )
+        }
+        else if (menuState == MenuItem.CONFLICT) {
+            _menuState.value = _menuState.value.copy(
+                isConflict = !_menuState.value.isConflict
+            )
+        }
+        else if (menuState == MenuItem.UNDO && !_menuState.value.isUndo) {
+            _menuState.value = _menuState.value.copy(
+                isUndo = true
+            )
+            undo()
+            _menuState.value = _menuState.value.copy(
+                isUndo = false
+            )
+        }
+    }
 
     init {
-        startNewGame(rows = 25, cols = 25, mineCount = 90)
+        startNewGame(rows = 25, cols = 25, mineCount = 120)
     }
 
     fun startNewGame(
@@ -110,46 +167,59 @@ class GameViewModel : ViewModel() {
 
     fun onCellTap(id: Int) {
         val currentBoard = board ?: return
+
+        println(menuState)
+        if (menuState.value.selected == MenuItem.INFO) {
+            showInfo(id)
+            return
+        }
+
         if (phase != GamePhase.PLAYING) return
 
-        val cell = currentBoard.cell(id)
-        if (cell.state == CellState.FLAGGED) return
-
-        pushHistory()
-
-        // ⭐ First-click exclusion zone
-        if (!firstClickDone) {
-
+        // First-click safe regen
+        if (!firstClickDone && menuState.value.selected == MenuItem.OPEN) {
             board = regenerateSafeBoard(id)
             firstClickDone = true
-
-            // Invalidate solver cache
-            lastSignature = null
-            lastOverlay = null
+            invalidateCaches()
         }
 
-        val newBoard = board!!.reveal(id)
-        board = newBoard
-        moveCount++
+        val before = board!!
 
-        if (cell.isMine) {
+        val after = when(menuState.value.selected) {
+            MenuItem.OPEN -> before.reveal(id)
+            MenuItem.FLAG -> before.toggleFlag(id)
+            MenuItem.CHORD -> before.chord(id)
+            else -> before
+        }
+
+        if (after !== before) {
+            pushHistory()
+            board = after
+            moveCount++
+        }
+
+         if (board!!.allCells().any { it.state == CellState.EXPLODED })
             phase = GamePhase.LOST
-        } else if (checkWin(newBoard)) {
+        else if (checkWin(board!!))
             phase = GamePhase.WON
-        }
+
 
         emitUiState()
     }
 
 
-
     fun onToggleFlag(id: Int) {
         val currentBoard = board ?: return
-        if (phase != GamePhase.PLAYING) return
 
-        pushHistory()                     // ⭐ ADD THIS
+        println("TOGGLE state before = ${currentBoard.cell(id).state}")
+
+        if (phase == GamePhase.LOST || phase == GamePhase.WON) return
+
+        pushHistory()
 
         board = currentBoard.toggleFlag(id)
+
+        println("TOGGLE state after = ${currentBoard.cell(id).state}")
         emitUiState()
     }
 
@@ -160,11 +230,16 @@ class GameViewModel : ViewModel() {
         }
     }
 
-
-
     private fun pushHistory() {
         board?.let {
-            history.addLast(GameSnapshot(it, phase, moveCount))
+            history.addLast(
+                GameSnapshot(
+                    it.copy(),          // ⭐ CRITICAL CHANGE
+                    phase,
+                    moveCount,
+                    firstClickDone
+                )
+            )
         }
     }
 
@@ -175,15 +250,18 @@ class GameViewModel : ViewModel() {
         board?.let {
             redo.addLast(
                 GameSnapshot(
-                    board = it,
+                    board = it.copy(),
                     phase = phase,
-                    moveCount = moveCount
+                    moveCount = moveCount,
+                    firstClickDone = firstClickDone
                 )
             )
         }
 
+        invalidateCaches()
+
         val snap = history.removeLast()
-        board = snap.board
+        board = snap.board.copy()
         phase = snap.phase
         moveCount = snap.moveCount
 
@@ -191,6 +269,10 @@ class GameViewModel : ViewModel() {
     }
 
 
+    private fun invalidateCaches() {
+        lastSignature = null
+        lastOverlay = null
+    }
 
     fun redo() {
 
@@ -202,39 +284,55 @@ class GameViewModel : ViewModel() {
                 GameSnapshot(
                     board = it,
                     phase = phase,
-                    moveCount = moveCount
+                    moveCount = moveCount,
+                    firstClickDone = firstClickDone
                 )
             )
         }
 
         // Restore snapshot
         val snap = redo.removeLast()
-        board = snap.board
+        board = snap.board.copy()
         phase = snap.phase
         moveCount = snap.moveCount
+        firstClickDone = snap.firstClickDone
 
         emitUiState()
     }
 
 
 
-    private fun buildOverlay(board: Board): AnalyzerOverlay {
+    fun figureOutColors(groups: Map<Int, Set<Int>>): Map<Int, Color> {
 
-        if (!_uiState.value.isEnumerating)
-            return AnalyzerOverlay()
+        val idToColor = mutableMapOf<Int, Color>()
+        val newPrev = mutableMapOf<Int, Set<Int>>()
 
-        val sig = board.signature()
+        for ((cid, cells) in groups) {
 
-        // Cache hit → skip expensive solver
-        if (sig == lastSignature && lastOverlay != null)
-            return lastOverlay!!
+            val match = prevGroups
+                .maxByOrNull { (_, oldCells) ->
+                    cells.intersect(oldCells).size
+                }
 
-        val overlay = analyzer.analyze(board)
+            val color =
+                if (match != null &&
+                    cells.intersect(match.value).isNotEmpty()
+                ) {
+                    // reuse previous color
+                    prevColors[match.key]!!
+                } else {
+                    // new component
+                    palette[nextColorIndex++ % palette.size]
+                }
 
-        lastSignature = sig
-        lastOverlay = overlay
+            idToColor[cid] = color
+            newPrev[cid] = cells
+        }
 
-        return overlay
+        prevGroups = newPrev
+        prevColors = idToColor
+
+        return idToColor
     }
 
 
@@ -258,9 +356,18 @@ class GameViewModel : ViewModel() {
             else
                 AnalyzerOverlay()
 
-        val frontier = Frontier().build(board)
+        val frontier = Frontier().build(board!!)
         val componentMap = buildComponentMap(frontier)
 
+        // Reverse grouping
+        val groups = componentMap.entries.groupBy(
+            { it.value },
+            { it.key }
+        ).mapValues { it.value.toSet() }
+
+        val componentIdToColor = figureOutColors(groups)
+
+        println(overlay.reasons)
 
         val uiCells = board.allCells().map { cell ->
 
@@ -285,8 +392,10 @@ class GameViewModel : ViewModel() {
                     probability = prob,
                     forcedOpen = forcedOpen,
                     forcedFlag = forcedFlag,
-                    conflict = conflict != null,
-                    componentId = componentMap[cell.id]
+                    conflict = conflict,
+                    componentId = componentMap[cell.id],
+                    componentColor = componentMap[cell.id]?.let { componentIdToColor[it] },
+                    reasons = overlay.reasons[cell.id]
                 )
             )
         }
@@ -307,6 +416,16 @@ class GameViewModel : ViewModel() {
     fun closeNewGameDialog() {
         _uiState.value = _uiState.value.copy(showNewGameDialog = false)
     }
+
+    fun showInfo(cellId: Int) {
+        val cell = _uiState.value.cells.firstOrNull { it.id == cellId }
+        _uiState.value = _uiState.value.copy(infoCell = cell)
+    }
+
+    fun hideInfo() {
+        _uiState.value = _uiState.value.copy(infoCell = null)
+    }
+
 
 }
 

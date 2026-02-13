@@ -9,6 +9,7 @@ import com.kim.minemind.analysis.caching.componentSignatureStable
 import com.kim.minemind.analysis.enumeration.ProbabilityResult
 import com.kim.minemind.domain.Board
 import com.kim.minemind.domain.CellState
+import com.kim.minemind.state.ComponentKey
 import java.util.BitSet
 
 class Frontier (
@@ -25,6 +26,7 @@ class Frontier (
         }
 
         val comps = computeComponents(board)
+
 
         caches?.frontier?.put(sig, comps)
 

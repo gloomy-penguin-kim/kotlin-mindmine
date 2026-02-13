@@ -2,19 +2,13 @@ package com.kim.minemind.analysis.rules
 
 
 import com.kim.minemind.analysis.frontier.Component
+import com.kim.minemind.domain.Board
 import java.util.BitSet
 
 fun equivalenceRule(
     comp: Component,
     moves: RuleAggregator
-) {
-    fun isProperSubset(a: BitSet, b: BitSet): Boolean {
-        val inter = (a.clone() as BitSet).apply { and(b) }
-        return inter == a && a != b
-    }
-
-    fun difference(b: BitSet, a: BitSet): BitSet =
-        (b.clone() as BitSet).apply { andNot(a) }
+)  {
 
     fun enqueueMovesForMask(mask: BitSet, ruleType: RuleType, reasonList: MutableSet<String>) {
         var bit = mask.nextSetBit(0)
@@ -45,11 +39,11 @@ fun equivalenceRule(
             if (b.isEmpty) continue
 
             // (1) equality contradiction
-            if (a == b && remA != remB) {
+            if (equalMask(a,b) && remA != remB) {
                 moves.addConflicts(
                     mask = (a.clone() as BitSet),
                     localToGlobal = comp.localToGlobal,
-                    newReasons = setOf("Equality Contradiction: A==B but remaining differs",
+                    newReasons = setOf("Equivalence Conflict: A==B but remaining differs",
 //                        "A=$a rem=$remA",
 //                        "B=$b rem=$remB"
                     )
@@ -90,4 +84,5 @@ fun equivalenceRule(
             }
         }
     }
+
 }

@@ -46,16 +46,30 @@ class RuleAggregator(
         for (dec in other.forcedOpens) {
             decisions[dec] = RuleType.SAFE
         }
-        conflicts += other.conflicts
-        reasons += other.reasons
+//        conflicts += other.conflicts
+        for ((gid, conflict) in other.conflicts) {
+            conflicts.getOrPut(gid) {
+                Conflict(gid, conflict.source, mutableSetOf())
+            }.reasons.addAll(conflict.reasons)
+        }
+
+        for ((gid, rule) in other.reasons) {
+            reasons.getOrPut(gid) {
+                Rule(gid, rule.type, mutableSetOf())
+            }.reasons.addAll(rule.reasons)
+        }
     }
 
     fun addRule(mask: BitSet, localToGlobal: IntArray, rule: Rule) {
 
         val gid = rule.gid
 
-        if (board.isCellVisible(gid)) return
-        if (gid in conflicts) return
+//        if (board.isCellVisible(gid)) return
+
+        if (gid in conflicts) {
+            conflicts[gid]?.reasons?.addAll(rule.reasons)
+            return
+        }
 
         val existing = decisions[gid]
 

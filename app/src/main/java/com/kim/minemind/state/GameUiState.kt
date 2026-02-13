@@ -17,7 +17,12 @@ data class GameUiState(
     val showSettingsDialog: Boolean = false,
     val showAboutDialog: Boolean = false,
 
-    val isEnumerating: Boolean = true
+    val isEnumerating: Boolean = true,
+    val isVerify: Boolean = false,
+    val isConflict: Boolean = true,
+    val isAutoBot: Boolean = false,
+
+    val infoCell: UiCell? = null
 ) {
     fun shouldAnalyze() =
         isEnumerating && (phase == GamePhase.PLAYING ||  phase == GamePhase.READY)

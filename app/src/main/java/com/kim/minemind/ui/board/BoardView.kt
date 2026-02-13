@@ -1,21 +1,16 @@
 package com.kim.minemind.ui.board
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -25,12 +20,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kim.minemind.state.GameUiState
-import kotlinx.coroutines.flow.StateFlow
 
 import android.util.Log
-import androidx.compose.material3.Text
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.unit.sp
 
 @Composable
 fun BoardView(
@@ -73,7 +64,7 @@ fun BoardView(
     BoxWithConstraints(
         modifier = Modifier //0xFF282A36
             //.border(4.dp, Color(0xFF0000FF), shape)
-            .clip(shape)
+            //.clip(shape)
             .background(Color(0xFF111318))
     ) {
         val viewportW = constraints.maxWidth.toFloat()

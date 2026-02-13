@@ -34,7 +34,7 @@ class Board private constructor(
             }
 
             val neighborsCache = Array(rows * cols) { id ->
-                computeNeighbors(id, rows, cols)   // ✅ correct name
+                computeNeighbors(id, rows, cols)
             }
 
             return Board(rows, cols, cells, neighborsCache)
@@ -64,6 +64,35 @@ class Board private constructor(
         return cells[id].state in listOf(CellState.REVEALED, CellState.FLAGGED)
     }
 
+    fun chord(id: Int): Board {
+        val cell = cells[id]
+        if (cell.state != CellState.REVEALED) return this
+        if (cell.adjacentMines == 0) return this
+
+        val neighbors = neighborsOf(id)
+
+        val flagged = neighbors.count {
+            cells[it].state == CellState.FLAGGED
+        }
+
+        if (flagged == cell.adjacentMines)
+            return this
+
+        var board = this
+
+        for (n in neighbors) {
+            val nc = board.cells[n]
+            // Skip flags
+            if (nc.state == CellState.FLAGGED)
+                continue
+            // Reveal like normal click
+            board = board.reveal(n)
+        }
+
+        return board
+    }
+
+
     fun reveal(id: Int): Board {
         val cell = cells[id]
         if (cell.state != CellState.HIDDEN) return this
@@ -71,7 +100,7 @@ class Board private constructor(
         // Mine hit: reveal only this cell
         if (cell.isMine) {
             return copyCell(id) {
-                it.copy(state = CellState.REVEALED)
+                it.copy(state = CellState.EXPLODED)
             }
         }
 
@@ -148,6 +177,18 @@ class Board private constructor(
 
         return BoardSignature(rows, cols, h)
     }
+
+    fun copy(): Board {
+        return Board(
+            rows,
+            cols,
+            cells.map { it.copy() },
+            Array(neighborsCache.size) { i ->
+                neighborsCache[i].copyOf()
+            }
+        )
+    }
+
 }
 
 private fun computeAdjacency(

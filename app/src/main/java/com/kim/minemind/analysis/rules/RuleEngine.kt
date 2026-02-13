@@ -26,11 +26,18 @@ class RuleEngine (
             val rulesComp = RuleAggregator(board)
             singlesRule(comp, rulesComp)
             subsetsRule(comp, rulesComp)
-            equivalenceRule(comp, rulesComp)
+            //equivalenceRule(comp, rulesComp)
+
+            println("getReasons()")
+            println(rulesComp.getReasons())
+            println("getConflicts()")
+            println(rulesComp.getConflicts())
+
             caches.rules.put(sig, RuleResult(
                 forcedFlags = rulesComp.forcedFlags(),
                 forcedOpens = rulesComp.forcedOpens(),
-                conflicts = rulesComp.getConflicts()
+                conflicts = rulesComp.getConflicts(),
+                reasons = rulesComp.getReasons()
             ))
             rulesCombined.combine(rulesComp)
         }
@@ -38,7 +45,8 @@ class RuleEngine (
         return RuleResult(
             forcedFlags = rulesCombined.forcedFlags(),
             forcedOpens = rulesCombined.forcedOpens(),
-            conflicts = rulesCombined.getConflicts()
+            conflicts = rulesCombined.getConflicts(),
+            reasons = rulesCombined.getReasons()
         )
     }
 

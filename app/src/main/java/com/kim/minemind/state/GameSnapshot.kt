@@ -5,5 +5,6 @@ import com.kim.minemind.domain.Board
 data class GameSnapshot(
     val board: Board,
     val phase: GamePhase,
-    val moveCount: Int
+    val moveCount: Int,
+    val firstClickDone: Boolean
 )
