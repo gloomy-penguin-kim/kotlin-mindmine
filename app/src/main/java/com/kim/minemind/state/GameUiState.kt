@@ -22,7 +22,8 @@ data class GameUiState(
     val isConflict: Boolean = true,
     val isAutoBot: Boolean = false,
 
-    val infoCell: UiCell? = null
+    val infoCell: UiCell? = null,
+    val focusCellId: Int? = null,
 ) {
     fun shouldAnalyze() =
         isEnumerating && (phase == GamePhase.PLAYING ||  phase == GamePhase.READY)

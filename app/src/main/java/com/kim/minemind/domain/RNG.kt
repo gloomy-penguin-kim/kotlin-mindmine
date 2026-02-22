@@ -2,29 +2,43 @@ package com.kim.minemind.domain
 
 import kotlin.random.Random
 
-class RNG(
-    seed: Int,
-    private val rows: Int,
-    private val cols: Int,
-    private val mines: Int,
-    private val firstClickGid: Int
-) {
-    private val _rng: Random
 
-    init {
-        // Create a hash based on the input parameters
-        val hash = (seed.hashCode() * 31 + rows.hashCode()) * 31 + cols.hashCode()
-        val fullHash = (hash * 31 + mines.hashCode()) * 31 + firstClickGid.hashCode()
-        _rng = Random(fullHash)
-    }
+class RNG(seed: Long) {
+    private val rng = Random(seed)
 
-    // Shuffle function to randomize the order of elements in a list
-    fun <T> shuffle(seq: MutableList<T>) {
-        seq.shuffle(_rng)
-    }
-
-    // Generate a random integer in the range [a, b]
-    fun randint(a: Int, b: Int): Int {
-        return _rng.nextInt(a, b + 1)
+    fun <T> shuffle(list: MutableList<T>) {
+        list.shuffle(rng)
     }
 }
+
+
+
+//class RNG(
+//    seed: Long,
+//    rows: Int,
+//    cols: Int,
+//    mineCount: Int,
+//    firstClickGid: Int
+//) {
+//    private val random: Random
+//
+//    init {
+//        val combinedSeed =
+//            seed
+//                .toLong()
+//                .xor(rows.toLong() shl 32)
+//                .xor(cols.toLong() shl 16)
+//                .xor(mineCount.toLong() shl 16)
+//                .xor(firstClickGid.toLong())
+//
+//        random = Random(combinedSeed)
+//    }
+//
+//    fun <T> shuffle(list: MutableList<T>) {
+//        list.shuffle(random)
+//    }
+//
+//    fun nextInt(bound: Int): Int {
+//        return random.nextInt(bound)
+//    }
+//}

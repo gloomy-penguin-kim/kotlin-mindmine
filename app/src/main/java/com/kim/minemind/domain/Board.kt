@@ -1,7 +1,9 @@
 package com.kim.minemind.domain
 
 import com.kim.minemind.analysis.caching.BoardSignature
+import kotlinx.serialization.Serializable
 
+@Serializable
 class Board private constructor(
     val rows: Int,
     val cols: Int,
@@ -56,6 +58,44 @@ class Board private constructor(
                 }
             }
             return tmp.copyOf(n)
+        }
+
+
+        fun fromSnapshot(snap: Board): Board {
+            val rows = snap.rows
+            val cols = snap.cols
+
+            // 1. Extract mine IDs
+            val mineIds = snap.cells
+                .filter { it.isMine }
+                .map { it.id }
+                .toSet()
+
+            // 2. Recompute adjacency counts
+            val adjCounts = computeAdjacency(rows, cols, mineIds)
+
+            // 3. Rebuild cells with correct state
+            val cells = List(rows * cols) { id ->
+                val snapCell = snap.cells[id]
+                Cell(
+                    id = id,
+                    isMine = snapCell.isMine,
+                    adjacentMines = adjCounts[id],
+                    state = snapCell.state
+                )
+            }
+
+            // 4. Rebuild neighbors cache
+            val neighborsCache = Array(rows * cols) { id ->
+                computeNeighbors(id, rows, cols)
+            }
+
+            return Board(
+                rows = rows,
+                cols = cols,
+                cells = cells,
+                neighborsCache = neighborsCache
+            )
         }
     }
 
@@ -188,6 +228,7 @@ class Board private constructor(
             }
         )
     }
+
 
 }
 

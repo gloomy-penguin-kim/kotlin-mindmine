@@ -1,11 +1,14 @@
 package com.kim.minemind.ui.board
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -13,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kim.minemind.state.MenuState
 import com.kim.minemind.state.UiCell
 
 
@@ -68,6 +72,7 @@ fun componentColor(id: Int): Color {
 @Composable
 fun CellView(
     cell: UiCell,
+    menuState: MenuState,
     size: Dp,
     onTap: () -> Unit,
     onLongPress: () -> Unit
@@ -77,31 +82,110 @@ fun CellView(
 
     val cellProbability = cell.overlay.probability ?: -1f
 
+    val hasConflict = (menuState.isConflict && overlay.conflict != null)
+
     // ---------- Background ----------
     val bgColor = when {
 
-        cell.isExploded -> Color.Red
+        cell.isExploded && !cell.isFlagged -> Color.Red
 
-        overlay.conflict != null -> Color(0xFFFF6B6B)
+        cell.isFlagged -> when {
+            menuState.isVerify && !cell.isMine -> Color(0xFFFF6B6B)
+            else -> Color.Gray
+        }
 
-        cell.isFlagged -> Color.DarkGray
+        hasConflict -> Color(0xFFFF6B6B)
 
-//        overlay.componentId != null && !cell.isRevealed && !cell.isFlagged ->
-//            overlay.componentColor!!.copy(alpha = 0.25f)
+        menuState.isComponent &&
+                overlay.componentId != null &&
+                !cell.isRevealed ->
+            overlay.componentColor!!.copy(alpha = 0.25f)
 
-        overlay.conflict == null && cellProbability >= 0 && overlay.forcedFlag -> Color(0xFF7B1FA2)
-        overlay.conflict == null && cellProbability >= 0 && overlay.forcedOpen -> Color(0xFF1976D2)
+        !hasConflict && menuState.isAnalyze && cellProbability >= 0 && overlay.forcedFlag ->
+            Color(0xFF7B1FA2)
+
+        !hasConflict && menuState.isAnalyze && cellProbability >= 0 && overlay.forcedOpen ->
+            Color(0xFF1976D2)
 
         cell.isRevealed -> Color.LightGray
+
         else -> Color.DarkGray
     }
 
+    var glyph = ""
+    var color = Color.DarkGray
+    var fWeight = FontWeight.Normal
+    var fSize = 12.sp
+
+    if (cell.isFlagged) {
+        glyph = "F"
+        if (!hasConflict) {
+            if (menuState.isVerify && !cell.isMine)
+                color = Color.DarkGray
+            else Color.White.copy(alpha = 0.8f)
+        }
+        else Color.DarkGray
+        fWeight = FontWeight.Bold
+    }
+    else if (cell.isExploded) {
+        glyph = "@"
+        fWeight = FontWeight.Bold
+    }
+    else if (cell.isRevealed) {
+        if (cell.isMine) {
+            glyph = "*"
+            fWeight = FontWeight.Bold
+        }
+        else if (cell.adjacentMines > 0) {
+            glyph = cell.adjacentMines.toString()
+            fWeight = FontWeight.Bold
+        }
+    }
+    else {
+        glyph = probabilityToGlyph(cell.overlay.probability)
+
+        if (overlay.forcedOpen) {
+            glyph = "O"
+            fWeight = FontWeight.Normal
+        }
+        if (overlay.forcedFlag) {
+            glyph = "F"
+            fWeight = FontWeight.Normal
+        }
+        if (hasConflict) {
+            glyph = "C"
+            fWeight = FontWeight.Normal
+        }
+        else if (!menuState.isAnalyze) {
+            glyph = ""
+        }
+
+        if (glyph.isNotEmpty()) {
+            color = Color.White.copy(alpha = 0.8f)
+            fSize = 12.sp
+            fWeight = FontWeight.Normal
+        }
+    }
+
+
+    val animatedColor by animateColorAsState(
+        targetValue = bgColor ?: Color.Transparent,
+        animationSpec = tween(durationMillis = 350),
+        label = "componentColor"
+    )
+
+
+    val animatedTextColor by animateColorAsState(
+        targetValue = color,
+        animationSpec = tween(350),
+        label = "cellTextColor"
+    )
 
     Box(
         modifier = Modifier
             .size(size)
             .padding(1.dp)
-            .background(bgColor, RoundedCornerShape(4.dp))
+            .background(animatedColor, RoundedCornerShape(1.dp))
             .combinedClickable(
                 onClick = onTap,
                 onLongClick = onLongPress
@@ -109,44 +193,65 @@ fun CellView(
         contentAlignment = Alignment.Center
     ) {
 
+        Text(
+            text = glyph,
+            color = animatedTextColor,
+            fontSize = fSize,
+            fontWeight = fWeight,
+        )
         // ---------- Foreground ----------
-        when {
-
-            // Priority visuals
-            cell.isFlagged -> Text("🚩")
-            cell.isExploded -> Text("💥")
-
-            cell.isRevealed && cell.isMine ->
-                Text("💣")
-
-            cell.isRevealed && cell.adjacentMines > 0 ->
-                Text(
-                    text = cell.adjacentMines.toString(),
-                    fontWeight = FontWeight.Bold
-                )
-
-            // ---------- Overlay Rendering ----------
-            !cell.isRevealed && !cell.isFlagged -> {
-
-                var glyph = probabilityToGlyph(cell.overlay.probability)
-
-                if (overlay.forcedOpen) {
-                    glyph = "O"
-                }
-                else if (overlay.forcedFlag) {
-                    glyph = "F"
-                }
-                else if (overlay.conflict != null) {
-                    glyph = "C"
-                }
-
-                if (glyph.isNotEmpty()) {
-                    Text(
-                        text = glyph,
-                        fontSize = 10.sp,
-                        color = Color.White.copy(alpha = 0.8f)
-                    )
-                }
+//        when {
+//
+//            // Priority visuals
+//            cell.isFlagged ->
+//                Text(
+//                    text = "F",
+//                    color = Color.White.copy(alpha = 0.8f),
+//                    fontWeight = FontWeight.Bold
+//                )
+//            cell.isExploded ->
+//                Text(
+//                    text = "@",
+//                    fontWeight = FontWeight.Bold
+//                )
+//
+//            cell.isRevealed && cell.isMine ->
+//                Text(
+//                    text = "*",
+//                    fontWeight = FontWeight.Bold
+//                )
+//
+//            cell.isRevealed && cell.adjacentMines > 0 ->
+//                Text(
+//                    text = cell.adjacentMines.toString(),
+//                    fontWeight = FontWeight.Bold
+//                )
+//
+//            // ---------- Overlay Rendering ----------
+//            !cell.isRevealed && !cell.isFlagged -> {
+//
+//                var glyph = probabilityToGlyph(cell.overlay.probability)
+//
+//                if (overlay.forcedOpen) {
+//                    glyph = "O"
+//                }
+//                if (overlay.forcedFlag) {
+//                    glyph = "F"
+//                }
+//                if (hasConflict) {
+//                    glyph = "C"
+//                }
+//                else if (!menuState.isAnalyze) {
+//                    glyph = ""
+//                }
+//
+//                if (glyph.isNotEmpty()) {
+//                    Text(
+//                        text = glyph,
+//                        fontSize = 10.sp,
+//                        color = Color.White.copy(alpha = 0.8f)
+//                    )
+//                }
 
 //                if (!cell.isRevealed && glyph.isNotEmpty()) {
 //                    Text(
@@ -179,7 +284,7 @@ fun CellView(
 //                        fontWeight = FontWeight.Bold
 //                    )
 //                }
-            }
-        }
     }
+//        }
+//    }
 }
