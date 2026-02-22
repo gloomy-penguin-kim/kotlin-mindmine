@@ -1,5 +1,7 @@
 package com.kim.minemind.state
 
+import kotlinx.serialization.Serializable
+
 data class GameUiState(
     // board geometry
     val rows: Int = 0,
@@ -26,5 +28,23 @@ data class GameUiState(
     val focusCellId: Int? = null,
 ) {
     fun shouldAnalyze() =
-        isEnumerating && (phase == GamePhase.PLAYING ||  phase == GamePhase.READY)
+        (isEnumerating) && (phase == GamePhase.PLAYING ||  phase == GamePhase.READY)
 }
+
+
+@Serializable
+data class PersistedGameState(
+    val rows: Int,
+    val cols: Int,
+    val mineCount: Int,
+    val seed: Long,
+    val firstClickId: Int?,
+    val moves: List<MoveEvent>,
+    val cursor: Int
+)
+
+@Serializable
+data class MoveEvent(
+    val id: Int,
+    val action: MenuItem // OPEN, FLAG, CHORD
+)

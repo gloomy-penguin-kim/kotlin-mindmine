@@ -1,6 +1,7 @@
 package com.kim.minemind.domain
 
 import com.kim.minemind.analysis.caching.BoardSignature
+import com.kim.minemind.state.BoardSnapshot
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -59,43 +60,13 @@ class Board private constructor(
             }
             return tmp.copyOf(n)
         }
+        fun fromSnapshot(snapshot: BoardSnapshot): Board {
+            var board = Board.newGame(snapshot.rows, snapshot.cols, snapshot.mines)
 
+            snapshot.revealed.forEach { board = board.reveal(it) }
+            snapshot.flagged.forEach { board = board.toggleFlag(it) }
 
-        fun fromSnapshot(snap: Board): Board {
-            val rows = snap.rows
-            val cols = snap.cols
-
-            // 1. Extract mine IDs
-            val mineIds = snap.cells
-                .filter { it.isMine }
-                .map { it.id }
-                .toSet()
-
-            // 2. Recompute adjacency counts
-            val adjCounts = computeAdjacency(rows, cols, mineIds)
-
-            // 3. Rebuild cells with correct state
-            val cells = List(rows * cols) { id ->
-                val snapCell = snap.cells[id]
-                Cell(
-                    id = id,
-                    isMine = snapCell.isMine,
-                    adjacentMines = adjCounts[id],
-                    state = snapCell.state
-                )
-            }
-
-            // 4. Rebuild neighbors cache
-            val neighborsCache = Array(rows * cols) { id ->
-                computeNeighbors(id, rows, cols)
-            }
-
-            return Board(
-                rows = rows,
-                cols = cols,
-                cells = cells,
-                neighborsCache = neighborsCache
-            )
+            return board
         }
     }
 
@@ -115,7 +86,7 @@ class Board private constructor(
             cells[it].state == CellState.FLAGGED
         }
 
-        if (flagged == cell.adjacentMines)
+        if (flagged != cell.adjacentMines)
             return this
 
         var board = this
@@ -228,6 +199,19 @@ class Board private constructor(
             }
         )
     }
+
+
+
+    fun toSnapshot(): BoardSnapshot {
+        return BoardSnapshot(
+            rows = rows,
+            cols = cols,
+            mines = allCells().filter { it.isMine }.map { it.id }.toSet(),
+            revealed = allCells().filter { it.state == CellState.REVEALED }.map { it.id }.toSet(),
+            flagged = allCells().filter { it.state == CellState.FLAGGED }.map { it.id }.toSet()
+        )
+    }
+
 
 
 }

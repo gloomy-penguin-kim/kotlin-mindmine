@@ -14,17 +14,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.kim.minemind.state.GameUiState
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopMenu(
-    onNewGame: () -> Unit
+    onNewGame: () -> Unit,
+    uiState: GameUiState
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     TopAppBar(
-        title = { Text("MineMind") },
+        title = { ///Text("MineMind")
+            Text("moves: " + uiState.moveCount)},
         actions = {
             IconButton(onClick = { expanded = true }) {
                 Icon(Icons.Default.MoreVert, contentDescription = "Menu")

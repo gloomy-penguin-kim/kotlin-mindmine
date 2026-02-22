@@ -12,9 +12,9 @@ fun NewGameDialog(
     onStart: (rows: Int, cols: Int, mines: Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var rows by remember { mutableStateOf(9) }
-    var cols by remember { mutableStateOf(9) }
-    var mines by remember { mutableStateOf(10) }
+    var rows by remember { mutableStateOf(25) }
+    var cols by remember { mutableStateOf(25) }
+    var mines by remember { mutableStateOf(140) }
 
     AlertDialog(
         onDismissRequest = onDismiss,

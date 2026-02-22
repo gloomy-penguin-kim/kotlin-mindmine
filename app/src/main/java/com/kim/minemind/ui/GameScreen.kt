@@ -57,7 +57,8 @@ fun GameScreen(
             BoardView(
                 uiState = uiState,
                 onCell = vm::onCellTap,
-                onCellLongPress = vm::onToggleFlag
+                onCellLongPress = vm::onToggleFlag,
+                menuState = menuState
             )
 
 
@@ -69,18 +70,6 @@ fun GameScreen(
 
             // ===== Floating submenu overlay =====
             if (menuState.isExpanded) {
-//                Box(
-//                    Modifier
-//                        .matchParentSize()
-//                        .background(Color.Transparent)
-//                        .clickable(
-//                            indication = null,
-//                            interactionSource = remember { MutableInteractionSource() }
-//                        ) {
-//                            vm.onMenuAction(MenuItem.EXPANDED)
-//                        }
-//                )
-
                 FloatingSubMenu(
                     state = menuState,
                     onAction = vm::onMenuAction
@@ -88,14 +77,14 @@ fun GameScreen(
             }
 
             // ===== Dialogs =====
-            if (uiState.showNewGameDialog) {
+            if (menuState.showNewGameDialog) {
                 NewGameDialog(
                     onStart = vm::startNewGame,
                     onDismiss = vm::hideInfo
                 )
             }
 
-            uiState.infoCell?.let {
+            menuState.cellInfo?.let {
                 CellInfoDialog(
                     cell = it,
                     onDismiss = { vm.hideInfo() }

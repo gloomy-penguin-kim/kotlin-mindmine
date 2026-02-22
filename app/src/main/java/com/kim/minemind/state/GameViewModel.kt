@@ -24,9 +24,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
-import kotlin.random.Random
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
+
+
 @HiltViewModel
 class GameViewModel @Inject constructor(
     private val gameStateRepo: GameStateRepository
@@ -126,6 +130,7 @@ class GameViewModel @Inject constructor(
     }
 
     private fun selectTool(item: MenuItem) {
+        closeExpandedMenu()
         _menuState.value = _menuState.value.copy(
             selected = item,
             isExpanded = false,
@@ -139,7 +144,9 @@ class GameViewModel @Inject constructor(
             isAnalyze = newAnalyze,
             isAutoBot = false
         )
-        _uiState.value = _uiState.value.copy(isEnumerating = !newAnalyze)
+        autobotJob?.cancel()
+        _uiState.value = _uiState.value.copy(isEnumerating = newAnalyze)
+        emitUiState()
     }
 
     private fun toggleMenuFlag(block: (MenuState) -> MenuState) {
@@ -150,28 +157,30 @@ class GameViewModel @Inject constructor(
         val newValue = !_menuState.value.isAutoBot
         _menuState.value = _menuState.value.copy(isAutoBot = newValue)
         if (newValue) autobot()
+        else {
+            autobotJob?.cancel()
+        }
     }
 
     private fun performUndo() {
         if (_menuState.value.isUndo) return
+        closeExpandedMenu()
         _menuState.value = _menuState.value.copy(isUndo = true, isExpanded = false)
         undo()
         _menuState.value = _menuState.value.copy(isUndo = false)
     }
 
     fun closeExpandedMenu() {
-
+        autobotJob?.cancel()
         _menuState.value = _menuState.value.copy(
             isExpanded = false,
-            isAutoBot = false
-        )
-        _uiState.value = _uiState.value.copy(
             isAutoBot = false,
-            infoCell = null,
+            cellInfo = null,
         )
-
-        autobotJob?.cancel()
-        _menuState.value = _menuState.value.copy(isExpanded = false, isAutoBot = false)
+//        _uiState.value = _uiState.value.copy(
+//            isAutoBot = false,
+//            infoCell = null,
+//        )
     }
 
     // ------------------------------------------------------------
@@ -283,15 +292,40 @@ class GameViewModel @Inject constructor(
     // ------------------------------------------------------------
     // Undo / redo
     // ------------------------------------------------------------
+
+    private val MAX_HISTORY = 300 // cap so datastore doesn't explode
+
+    private fun currentSnapshot(): GameSnapshot {
+        val b = board ?: error("Board missing")
+        return GameSnapshot(
+            board = b.toSnapshot(),
+            phase = phase,
+            moveCount = moveCount,
+            firstClickDone = firstClickDone,
+            menuState = MenuState.toSnapshot(_menuState.value)
+        )
+    }
+
+    private fun persistAll() {
+        val state = PersistedGameState(
+            current = currentSnapshot(),
+            history = history.takeLast(MAX_HISTORY).toList(),
+            redo = redo.takeLast(MAX_HISTORY).toList()
+        )
+        viewModelScope.launch {
+            gameStateRepo.save(json.encodeToString(state))
+        }
+    }
+
     private fun pushHistory() {
         board?.let {
             history.addLast(
                 GameSnapshot(
-                    it.copy(), // it.snapshot()
+                    board!!.toSnapshot(), // it.snapshot()
                     phase,
                     moveCount,
                     firstClickDone,
-                    menuState = menuState.value.copy()
+                    MenuState.toSnapshot(_menuState.value)
                 )
             )
         }
@@ -303,11 +337,11 @@ class GameViewModel @Inject constructor(
         board?.let {
             redo.addLast(
                 GameSnapshot(
-                    it.copy(),
+                    board!!.toSnapshot(),
                     phase,
                     moveCount,
                     firstClickDone,
-                    menuState = menuState.value.copy()
+                    MenuState.toSnapshot(_menuState.value)
                 )
             )
         }
@@ -323,11 +357,11 @@ class GameViewModel @Inject constructor(
         board?.let {
             history.addLast(
                 GameSnapshot(
-                    it.copy(),
+                    board!!.toSnapshot(),
                     phase,
                     moveCount,
                     firstClickDone,
-                    menuState = menuState.value.copy()
+                    MenuState.toSnapshot(_menuState.value)
                 )
             )
         }
@@ -342,18 +376,19 @@ class GameViewModel @Inject constructor(
         phase = snap.phase
         moveCount = snap.moveCount
         firstClickDone = snap.firstClickDone
-        _menuState.value = snap.menuState.copy()
+        _menuState.value = MenuState.fromSnapshot(snap.menuState)
         invalidateCaches()
+        emitUiState()
     }
 
     private fun persistSnapshot() {
         val b = board ?: return
         val snap = GameSnapshot(
-            board = b.copy(),
+            board = b.toSnapshot(),
             phase = phase,
             moveCount = moveCount,
             firstClickDone = firstClickDone,
-            menuState = menuState.value.copy()
+            menuState = MenuState.toSnapshot(_menuState.value)
         )
         viewModelScope.launch {
             gameStateRepo.save(json.encodeToString<GameSnapshot>( snap))
@@ -461,15 +496,23 @@ class GameViewModel @Inject constructor(
         transform: (Board) -> Board
     ): Boolean {
         val before = board ?: return false
+
+        if (!menuState.value.isAutoBot || phase != GamePhase.PLAYING) return false
+
         val after = transform(before)
         if (after === before) return false
 
-        _uiState.value = _uiState.value.copy(focusCellId = id)
-        pushHistory()
-        board = after
-        moveCount++
-        emitUiState()
-        delay(250L)
+        withContext(Dispatchers.Main) {
+            _uiState.value = _uiState.value.copy(focusCellId = id)
+            pushHistory()
+            board = after
+            moveCount++
+            emitUiState()
+        }
+
+        yield()
+        delay(600L)
+
         persistSnapshot()
         return true
     }
@@ -513,9 +556,14 @@ class GameViewModel @Inject constructor(
 
         val ui = _uiState.value
         val overlay =
-            if (ui.shouldAnalyze())
+            if (ui.shouldAnalyze()) {
+                println("ui should analyze")
                 analyzer.analyze(b).withConflicts(AnalyzerOverlay.detectFlagConflicts(b))
-            else AnalyzerOverlay()
+            }
+            else {
+                println("ui should NOT analyze")
+                AnalyzerOverlay()
+            }
 
         val frontier = Frontier().build(b)
         val componentMap = buildComponentMap(frontier)
@@ -559,7 +607,6 @@ class GameViewModel @Inject constructor(
     }
 
     fun showNewGameDialog() {
-        closeExpandedMenu()
         _menuState.value = _menuState.value.copy(
             isExpanded = false,
             isAutoBot = false,
@@ -567,13 +614,13 @@ class GameViewModel @Inject constructor(
             showNewGameDialog = true,
             showCellInfoDialog = false,
         )
+        closeExpandedMenu()
     }
 
     // ------------------------------------------------------------
     // Info dialog
     // ------------------------------------------------------------
     fun showInfo(id: Int) {
-        closeExpandedMenu()
         val cell = _uiState.value.cells.firstOrNull { it.id == id }
         _menuState.value = _menuState.value.copy(
             isExpanded = false,
@@ -582,13 +629,10 @@ class GameViewModel @Inject constructor(
             showNewGameDialog = false,
             showCellInfoDialog = true,
         )
+        closeExpandedMenu()
     }
 
     fun hideInfo() {
-        closeExpandedMenu()
-        _uiState.value = _uiState.value.copy(infoCell = null,
-            showNewGameDialog = false,
-        )
         _menuState.value = _menuState.value.copy(
             isExpanded = false,
             isAutoBot = false,
@@ -596,6 +640,7 @@ class GameViewModel @Inject constructor(
             showNewGameDialog = false,
             showCellInfoDialog = false,
         )
+        closeExpandedMenu()
     }
 
     private fun invalidateCaches() {

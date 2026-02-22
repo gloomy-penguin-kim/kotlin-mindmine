@@ -1,5 +1,7 @@
 package com.kim.minemind.state
 
+import kotlinx.serialization.Serializable
+
 enum class MenuItem {
     OPEN,
     FLAG,
@@ -14,6 +16,7 @@ enum class MenuItem {
     AUTO,
     EXPANDED
 }
+
 
 data class MenuState(
     val selected: MenuItem? = MenuItem.OPEN,
@@ -32,4 +35,36 @@ data class MenuState(
 
     val showNewGameDialog: Boolean = false,
     val showCellInfoDialog: Boolean = false,
+) {
+    companion object {
+        fun toSnapshot(menuState: MenuState): MenuStateSnapshot {
+            return MenuStateSnapshot(
+                menuState.selected,
+                menuState.isVerify,
+                menuState.isAnalyze,
+                menuState.isConflict,
+                menuState.isComponent
+            )
+        }
+
+        fun fromSnapshot(snap: MenuStateSnapshot): MenuState {
+            return MenuState(
+                selected = snap.selected,
+                isVerify = snap.isVerify,
+                isAnalyze = snap.isAnalyze,
+                isConflict = snap.isConflict,
+                isComponent = snap.isComponent
+            )
+        }
+    }
+}
+
+@Serializable
+data class MenuStateSnapshot(
+    val selected: MenuItem? = MenuItem.OPEN,
+    val isVerify: Boolean = false,
+    val isAnalyze: Boolean = true,
+    val isConflict: Boolean = true,
+    val isComponent: Boolean = true
 )
+
