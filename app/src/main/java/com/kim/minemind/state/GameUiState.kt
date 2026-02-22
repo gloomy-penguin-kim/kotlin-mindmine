@@ -1,5 +1,6 @@
 package com.kim.minemind.state
 
+import com.kim.minemind.domain.Action
 import kotlinx.serialization.Serializable
 
 data class GameUiState(
@@ -38,13 +39,18 @@ data class PersistedGameState(
     val cols: Int,
     val mineCount: Int,
     val seed: Long,
+
     val firstClickId: Int?,
+
     val moves: List<MoveEvent>,
-    val cursor: Int
+    val cursor: Int,
+
+    val checkpoint: BoardSnapshot?,  // 👈 optional
+    val checkpointCursor: Int        // move index snapshot represents
 )
 
 @Serializable
 data class MoveEvent(
     val id: Int,
-    val action: MenuItem // OPEN, FLAG, CHORD
+    val action: Action // OPEN, FLAG, CHORD
 )

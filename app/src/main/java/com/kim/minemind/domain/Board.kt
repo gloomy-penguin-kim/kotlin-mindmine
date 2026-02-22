@@ -20,6 +20,16 @@ class Board private constructor(
     fun allCells(): List<Cell> =
         cells
 
+    fun hasExploded(): Boolean =
+        cells.any { it.state == CellState.EXPLODED }
+
+    fun isWin(): Boolean =
+        cells.all { it.isMine || it.state == CellState.REVEALED }
+
+    fun revealedCellIds(): List<Int> = allCells()
+        .filter {it.state == CellState.REVEALED }
+        .map { it.id }
+
     companion object {
         fun newGame(rows: Int, cols: Int, mineIds: Set<Int>): Board {
             require(rows > 0 && cols > 0)

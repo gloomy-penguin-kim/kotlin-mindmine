@@ -306,16 +306,16 @@ class GameViewModel @Inject constructor(
         )
     }
 
-    private fun persistAll() {
-        val state = PersistedGameState(
-            current = currentSnapshot(),
-            history = history.takeLast(MAX_HISTORY).toList(),
-            redo = redo.takeLast(MAX_HISTORY).toList()
-        )
-        viewModelScope.launch {
-            gameStateRepo.save(json.encodeToString(state))
-        }
-    }
+//    private fun persistAll() {
+//        val state = PersistedGameState(
+//            current = currentSnapshot(),
+//            history = history.takeLast(MAX_HISTORY).toList(),
+//            redo = redo.takeLast(MAX_HISTORY).toList()
+//        )
+//        viewModelScope.launch {
+//            gameStateRepo.save(json.encodeToString(state))
+//        }
+//    }
 
     private fun pushHistory() {
         board?.let {
