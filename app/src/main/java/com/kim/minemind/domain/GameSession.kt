@@ -25,12 +25,14 @@ class GameSession(
     private val moves = mutableListOf<MoveEvent>()
     private var cursor = 0
 
-    private var phase: GamePhase = GamePhase.READY
+    var currentPhase: GamePhase = GamePhase.READY
 
     // checkpoint
     private var checkpoint: BoardSnapshot? = null
     private var checkpointCursor: Int = 0
 
+    val phase: GamePhase
+        get() = currentPhase
 
     val currentBoard: Board
         get() = board
@@ -58,7 +60,7 @@ class GameSession(
     }
 
     fun updatePhase() {
-        phase = when {
+        currentPhase = when {
             firstClickId == null -> GamePhase.READY
             board.hasExploded() -> GamePhase.LOST
             board.isWin() -> GamePhase.WON

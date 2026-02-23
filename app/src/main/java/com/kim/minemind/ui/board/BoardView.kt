@@ -64,6 +64,7 @@ fun BoardView(
     var scale by remember(rows, cols) { mutableStateOf(1f) }
     var offset by remember(rows, cols) { mutableStateOf(Offset.Zero) }
 
+
     Log.d("BoardView", "rows=$rows cols=$cols cells=${cells.size}")
 
     if (rows == 0 || cols == 0 || cells.isEmpty()) {
@@ -175,20 +176,52 @@ fun BoardView(
             offset = clampOffset(centered, fitScale)
         }
         val animOffset = remember { Animatable(offset, Offset.VectorConverter) }
-
-        LaunchedEffect(focusCellId) {
-            if (focusCellId != null) {
-                val newOffset = centerOnCell(focusCellId)
-                animOffset.animateTo(newOffset)
-                offset = animOffset.value
-            }
-        }
+//
+//        LaunchedEffect(focusCellId) {
+//            if (focusCellId != null) {
+//                val newOffset = centerOnCell(focusCellId)
+//                animOffset.animateTo(newOffset)
+//                offset = animOffset.value
+//            }
+//        }
         val cellSizePx = with(density) { cellSize.toPx() }
 
-        LaunchedEffect(focusCellId) {
+//        LaunchedEffect(focusCellId) {
+//
+//            val id = focusCellId ?: return@LaunchedEffect
+//
+//            if (viewportW <= 0f || viewportH <= 0f) return@LaunchedEffect
+//
+//            val row = id / cols
+//            val col = id % cols
+//
+//            val cellLeft = col * cellSizePx
+//            val cellTop = row * cellSizePx
+//            val cellSizeScaled = cellSizePx * scale
+//
+//            val screenLeft = cellLeft * scale + offset.x
+//            val screenTop = cellTop * scale + offset.y
+//            val screenRight = screenLeft + cellSizeScaled
+//            val screenBottom = screenTop + cellSizeScaled
+//
+//            val isVisible =
+//                screenLeft >= 0f &&
+//                        screenTop >= 0f &&
+//                        screenRight <= viewportW &&
+//                        screenBottom <= viewportH
+//
+//            if (!isVisible) {
+//                // center it
+//                val targetX = viewportW / 2f - (cellLeft + cellSizePx / 2f) * scale
+//                val targetY = viewportH / 2f - (cellTop + cellSizePx / 2f) * scale
+//
+//                offset = clampOffset(Offset(targetX, targetY), scale)
+//            }
+//        }
+
+        LaunchedEffect(focusCellId, viewportW, viewportH, scale) {
 
             val id = focusCellId ?: return@LaunchedEffect
-
             if (viewportW <= 0f || viewportH <= 0f) return@LaunchedEffect
 
             val row = id / cols
@@ -210,15 +243,16 @@ fun BoardView(
                         screenBottom <= viewportH
 
             if (!isVisible) {
-                // center it
                 val targetX = viewportW / 2f - (cellLeft + cellSizePx / 2f) * scale
                 val targetY = viewportH / 2f - (cellTop + cellSizePx / 2f) * scale
 
-                offset = clampOffset(Offset(targetX, targetY), scale)
+                val clamped = clampOffset(Offset(targetX, targetY), scale)
+
+                animOffset.snapTo(offset)
+                animOffset.animateTo(clamped)
+                offset = animOffset.value
             }
         }
-
-
 
 
 

@@ -12,8 +12,9 @@ import kotlinx.coroutines.flow.map
 
 // GameStateRepository.kt
 import kotlinx.coroutines.flow.first
+import javax.inject.Inject
 
-class GameStateRepository(
+class GameStateRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>
 ) {
     companion object {

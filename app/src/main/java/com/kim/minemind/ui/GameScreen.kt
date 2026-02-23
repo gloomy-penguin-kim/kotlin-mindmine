@@ -57,7 +57,7 @@ fun GameScreen(
             BoardView(
                 uiState = uiState,
                 onCell = vm::onCellTap,
-                onCellLongPress = vm::onToggleFlag,
+                onCellLongPress = vm::onCellLongPress,
                 menuState = menuState
             )
 

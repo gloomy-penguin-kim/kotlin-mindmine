@@ -1,5 +1,6 @@
 package com.kim.minemind.state
 
+import com.kim.minemind.domain.Action
 import kotlinx.serialization.Serializable
 
 enum class MenuItem {
@@ -14,12 +15,16 @@ enum class MenuItem {
 
     COMPONENT,
     AUTO,
-    EXPANDED
+    EXPANDED;
+
+    companion object
 }
 
 
+
+
 data class MenuState(
-    val selected: MenuItem? = MenuItem.OPEN,
+    val selected: Action = Action.OPEN,
 
     val isExpanded: Boolean = false,
 
@@ -56,12 +61,33 @@ data class MenuState(
                 isComponent = snap.isComponent
             )
         }
+        fun toAction(menuItem: MenuItem): Action {
+            return when {
+                menuItem == MenuItem.OPEN -> Action.OPEN
+                menuItem == MenuItem.FLAG -> Action.FLAG
+                menuItem == MenuItem.CHORD -> Action.CHORD
+                menuItem == MenuItem.INFO -> Action.INFO
+                else -> Action.OPEN
+            }
+        }
     }
 }
 
+
+fun MenuItem.Companion.toAction(item: MenuItem): Action {
+    return when (item) {
+        MenuItem.OPEN -> Action.OPEN
+        MenuItem.FLAG -> Action.FLAG
+        MenuItem.CHORD -> Action.CHORD
+        MenuItem.INFO -> Action.INFO
+        else -> Action.OPEN
+    }
+}
+
+
 @Serializable
 data class MenuStateSnapshot(
-    val selected: MenuItem? = MenuItem.OPEN,
+    val selected: Action = Action.OPEN,
     val isVerify: Boolean = false,
     val isAnalyze: Boolean = true,
     val isConflict: Boolean = true,

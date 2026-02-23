@@ -8,7 +8,8 @@ import com.kim.minemind.analysis.frontier.Frontier
 import com.kim.minemind.analysis.rules.RuleEngine
 import com.kim.minemind.domain.Board
 
-class Analyzer {
+import javax.inject.Inject
+class Analyzer @Inject constructor() {
 
 
     private val caches = SolverCaches()

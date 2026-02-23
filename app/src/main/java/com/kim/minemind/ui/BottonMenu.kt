@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.kim.minemind.R
+import com.kim.minemind.domain.Action
 import com.kim.minemind.state.MenuItem
 import com.kim.minemind.state.MenuState
 
@@ -77,27 +78,27 @@ fun MineMindBottomMenu(
 
                 FloatingIcon(
                     drawableId = R.drawable.plus,
-                    selected = state.selected == MenuItem.OPEN
+                    selected = state.selected == Action.OPEN
                 ) { onAction(MenuItem.OPEN) }
 
                 FloatingIcon(
                     drawableId = R.drawable.flag,
-                    selected = state.selected == MenuItem.FLAG
+                    selected = state.selected == Action.FLAG
                 ) { onAction(MenuItem.FLAG) }
 
                 FloatingIcon(
                     drawableId = R.drawable.chord,
-                    selected = state.selected == MenuItem.CHORD
+                    selected = state.selected == Action.CHORD
                 ) { onAction(MenuItem.CHORD) }
 
                 FloatingIcon(
                     drawableId = R.drawable.question_mark,
-                    selected = state.selected == MenuItem.INFO
+                    selected = state.selected == Action.INFO
                 ) { onAction(MenuItem.INFO) }
 
                 FloatingIcon(
                     drawableId = R.drawable.undo,
-                    selected = state.selected == MenuItem.UNDO
+                    selected = state.isUndo
                 ) { onAction(MenuItem.UNDO) }
 
                 FloatingIcon(
