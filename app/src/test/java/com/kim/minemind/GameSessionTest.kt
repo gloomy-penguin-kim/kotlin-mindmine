@@ -46,6 +46,27 @@ class GameSessionTest {
     }
 
     @Test
+    fun undo_restores_previous_board2() {
+
+        val session = GameSession(25, 25, 140, 42L)
+
+        session.applyMove(MoveEvent(action = Action.OPEN, id = 15))
+        val boardAfterFirst = session.currentBoard
+
+        session.applyMove(MoveEvent(action = Action.FLAG, id = 20))
+        session.undo()
+
+        val x = boardAfterFirst.revealedCellIds()
+        val y = session.currentBoard.revealedCellIds()
+
+        assertEquals(x, y)
+
+        assertEquals(boardAfterFirst.toSnapshot(), session.currentBoard.toSnapshot())
+
+        assertEquals(boardAfterFirst.allCells(), session.currentBoard.allCells())
+    }
+
+    @Test
     fun redo_restores_forward_state() {
 
         val session = GameSession(10, 10, 10, 42L)

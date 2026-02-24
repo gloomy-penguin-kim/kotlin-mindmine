@@ -68,8 +68,7 @@ class BoardUiMapper(
         return GameUiState(
             rows = board.rows,
             cols = board.cols,
-            cells = uiCells,
-            showNewGameDialog = showNewGameDialog
+            cells = uiCells
         )
     }
 }

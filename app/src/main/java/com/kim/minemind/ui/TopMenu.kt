@@ -1,5 +1,8 @@
 package com.kim.minemind.ui
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
@@ -14,6 +17,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.kim.minemind.state.GameUiState
 
 
@@ -26,8 +31,14 @@ fun TopMenu(
     var expanded by remember { mutableStateOf(false) }
 
     TopAppBar(
-        title = { ///Text("MineMind")
-            Text("moves: " + uiState.moveCount)},
+
+        title = {
+            Row {
+                Text("Moves: ${uiState.moveCount}")
+                Spacer(modifier = Modifier.width(16.dp))
+                Text("Time: ${uiState.elapsedSeconds}")
+            }
+        },
         actions = {
             IconButton(onClick = { expanded = true }) {
                 Icon(Icons.Default.MoreVert, contentDescription = "Menu")

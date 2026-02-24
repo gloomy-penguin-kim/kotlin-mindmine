@@ -13,17 +13,26 @@ class GameSession(
     val rows: Int,
     val cols: Int,
     val mineCount: Int,
-    val seed: Long
+    val seed: Long,
+    private val firstClick: Int? = null,
+    private val moves: MutableList<MoveEvent> = mutableListOf(),
+    private var board: Board = Board.newGame(rows, cols, emptySet()),
+    private var cursor: Int = moves.size
 ) {
 
-    private var board: Board = Board.newGame(rows, cols, emptySet())
+    //private var board: Board = Board.newGame(rows, cols, emptySet())
+
 
 
     val firstClickId: Int?
         get() = moves.firstOrNull { it.action == Action.OPEN }?.id
 
-    private val moves = mutableListOf<MoveEvent>()
-    private var cursor = 0
+    //private val moves = mutableListOf<MoveEvent>()
+
+    fun getLastMoveId(): Int? {
+        if (cursor == 0) return null
+        return moves[cursor-1].id
+    }
 
     var currentPhase: GamePhase = GamePhase.READY
 
@@ -31,6 +40,8 @@ class GameSession(
     private var checkpoint: BoardSnapshot? = null
     private var checkpointCursor: Int = 0
 
+    val moveCount: Int
+        get() = cursor
     val phase: GamePhase
         get() = currentPhase
 
@@ -68,11 +79,13 @@ class GameSession(
         }
     }
 
-    fun undo(): Boolean {
-        if (cursor == 0) return false
+    fun undo(): Int? {
+        if (cursor == 1) return null
         cursor--
+        println(moves[cursor])
+        println(moves[cursor])
         rebuild()
-        return true
+        return moves[cursor].id
     }
 
     fun redo(): Boolean {
@@ -97,14 +110,13 @@ class GameSession(
             board = transform(board, moves[i], i)
         }
 
-        println(board.revealedCellIds())
         updatePhase()
     }
 
     private fun transform(board: Board, move: MoveEvent, index: Int): Board {
         var current = board
 
-        if (index == 0 && move.action == Action.OPEN) {
+        if (index == 0  && move.action == Action.OPEN) {
             val mines = generateMines(move.id)
             current = Board.newGame(rows, cols, mines)
         }
@@ -117,22 +129,27 @@ class GameSession(
         }
     }
 
-    fun snapshot(): PersistedGameState =
-        PersistedGameState(rows,
+    fun snapshot(): GameSessionSnapshot =
+        GameSessionSnapshot(
+            rows,
             cols,
             mineCount,
             seed,
             firstClickId,
             moves,
-            cursor,
-            checkpoint,
-            checkpointCursor)
+            cursor)
 
     companion object {
-        fun fromSnapshot(p: PersistedGameState): GameSession {
-            val session = GameSession(p.rows, p.cols, p.mineCount, p.seed)
-            session.moves.addAll(p.moves)
-            session.cursor = p.cursor
+        fun fromSnapshot(p: GameSessionSnapshot): GameSession {
+            val session = GameSession(
+                p.rows,
+                p.cols,
+                p.mineCount,
+                p.seed,
+                firstClick = p.firstClickId,
+                moves = p.moves.toMutableList(),
+                cursor = p.cursor ?: p.moves.size
+                 )
             session.rebuild()
             return session
         }

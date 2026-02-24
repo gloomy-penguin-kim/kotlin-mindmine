@@ -50,7 +50,7 @@ fun BoardView(
     val cols = uiState.cols
     val cells = uiState.cells
 
-    val focusCellId = uiState.focusCellId
+    val focusCellId = menuState.cellFocusId
 
 //    val isVerify = uiState.isVerify
 //    val isEnumerate = uiState.isEnumerate
@@ -176,14 +176,14 @@ fun BoardView(
             offset = clampOffset(centered, fitScale)
         }
         val animOffset = remember { Animatable(offset, Offset.VectorConverter) }
-//
-//        LaunchedEffect(focusCellId) {
-//            if (focusCellId != null) {
-//                val newOffset = centerOnCell(focusCellId)
-//                animOffset.animateTo(newOffset)
-//                offset = animOffset.value
-//            }
-//        }
+
+        LaunchedEffect(focusCellId) {
+            if (focusCellId != null) {
+                val newOffset = centerOnCell(focusCellId)
+                animOffset.animateTo(newOffset)
+                offset = animOffset.value
+            }
+        }
         val cellSizePx = with(density) { cellSize.toPx() }
 
 //        LaunchedEffect(focusCellId) {

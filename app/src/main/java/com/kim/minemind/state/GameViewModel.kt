@@ -13,6 +13,7 @@ import com.kim.minemind.ui.board.ComponentColorAssigner
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 @HiltViewModel
@@ -39,14 +40,25 @@ class GameViewModel @Inject constructor(
     private val uiMapper = BoardUiMapper(analyzer, colorAssigner)
 
 
+
     init {
         viewModelScope.launch {
-            session = persistence.load() ?: GameSession(
-                rows = 25,
-                cols = 25,
-                mineCount = 140,
-                seed = 24L
-            )
+            val p = persistence.load()
+            if (p != null) {
+                session = p.first
+                _menuState.value = p.second
+                _menuState.value = _menuState.value.copy(
+                    cellFocusId = session.getLastMoveId()
+                )
+            }
+            else {
+                session = GameSession(
+                    rows = 25,
+                    cols = 25,
+                    mineCount = 140,
+                    seed = 42L
+                )
+            }
             emit()
         }
     }
@@ -62,6 +74,14 @@ class GameViewModel @Inject constructor(
     fun onCellLongPress(id: Int) {
         val move = MoveEvent(action=Action.FLAG, id=id)
         session.applyMove(move)
+        if (session.moveCount == 1) {
+            startTimer()
+        }
+
+        if (session.phase == GamePhase.WON || session.phase == GamePhase.LOST) {
+            stopTimer()
+        }
+
         emit()
     }
 
@@ -73,11 +93,22 @@ class GameViewModel @Inject constructor(
         }
         val moveEvent = MoveEvent(action=menuState.value.selected, id=id)
         session.applyMove(moveEvent)
+        if (session.moveCount == 1) {
+            startTimer()
+        }
+
+        if (session.phase == GamePhase.WON || session.phase == GamePhase.LOST) {
+            stopTimer()
+        }
+
         emit()
     }
 
     fun undo() {
-        session.undo()
+        val id = session.undo()
+        _menuState.value = _menuState.value.copy(
+            cellFocusId = id
+        )
         emit()
     }
 
@@ -92,6 +123,9 @@ class GameViewModel @Inject constructor(
             phase = session.phase,
             menuState = _menuState.value
         )
+        viewModelScope.launch {
+            persistence.save(session, menuState.value)
+        }
     }
 
     fun autobot() {
@@ -99,18 +133,71 @@ class GameViewModel @Inject constructor(
         autobotJob = viewModelScope.launch {
             while (true) {
                 val move = autoPlayer.nextMove(session.currentBoard) ?: break
+                _menuState.value = _menuState.value.copy(
+                    cellFocusId = move.id
+                )
                 session.applyMove(move)
+                if (session.moveCount == 1) {
+                    startTimer()
+                }
+
+                if (session.phase == GamePhase.WON || session.phase == GamePhase.LOST) {
+                    stopTimer()
+                }
+
                 emit()
                 delay(400)
             }
         }
+        closeExpandedMenu()
     }
 
+    // ------------------------------------------------------------
+    // Timer times
+    // ------------------------------------------------------------
+    private var timerJob: Job? = null
+    private var startTime: Long? = null
+
+    private fun startTimer() {
+        if (timerJob != null) return
+
+        startTime = System.currentTimeMillis()
+
+        timerJob = viewModelScope.launch {
+            while (isActive) {
+                updateUiState()
+                delay(1000)
+            }
+        }
+    }
+
+    private fun updateUiState() {
+        _uiState.value = GameUiState(
+//            board = session.currentBoard,
+            phase = session.phase,
+            moveCount = session.moveCount,
+            elapsedSeconds = computeElapsed()
+        )
+    }
+
+    private fun computeElapsed(): Int {
+        val start = startTime ?: return 0
+        return ((System.currentTimeMillis() - start) / 1000).toInt()
+    }
+
+    private fun stopTimer() {
+        timerJob?.cancel()
+        timerJob = null
+    }
 
     // ------------------------------------------------------------
     // Menu actions
     // ------------------------------------------------------------
     fun onMenuAction(item: MenuItem) {
+        autobotJob?.cancel()
+        if (item != MenuItem.AUTO)
+            _menuState.value = _menuState.value.copy(isAutoBot = false)
+
         when (item) {
             MenuItem.OPEN, MenuItem.FLAG, MenuItem.CHORD, MenuItem.INFO ->
                 selectTool(item)
@@ -144,7 +231,6 @@ class GameViewModel @Inject constructor(
             isAutoBot = false
         )
         autobotJob?.cancel()
-        _uiState.value = _uiState.value.copy(isEnumerating = newAnalyze)
         emit()
     }
 

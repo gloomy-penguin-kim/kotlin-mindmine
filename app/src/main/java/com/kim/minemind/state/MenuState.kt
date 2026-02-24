@@ -19,16 +19,12 @@ enum class MenuItem {
 
     companion object
 }
-
-
-
-
 data class MenuState(
     val selected: Action = Action.OPEN,
 
     val isExpanded: Boolean = false,
 
-    val isVerify: Boolean = false,
+    val isVerify: Boolean = true,
     val isAnalyze: Boolean = true,
     val isConflict: Boolean = true,
     val isAutoBot: Boolean = false,
@@ -41,16 +37,28 @@ data class MenuState(
     val showNewGameDialog: Boolean = false,
     val showCellInfoDialog: Boolean = false,
 ) {
+
+    fun toSnapshot(): MenuStateSnapshot {
+        return MenuStateSnapshot(
+            selected,
+            isVerify,
+            isAnalyze,
+            isConflict,
+            isComponent
+        )
+    }
+
+
     companion object {
-        fun toSnapshot(menuState: MenuState): MenuStateSnapshot {
-            return MenuStateSnapshot(
-                menuState.selected,
-                menuState.isVerify,
-                menuState.isAnalyze,
-                menuState.isConflict,
-                menuState.isComponent
-            )
-        }
+//        fun toSnapshot(menuState: MenuState): MenuStateSnapshot {
+//            return MenuStateSnapshot(
+//                menuState.selected,
+//                menuState.isVerify,
+//                menuState.isAnalyze,
+//                menuState.isConflict,
+//                menuState.isComponent
+//            )
+//        }
 
         fun fromSnapshot(snap: MenuStateSnapshot): MenuState {
             return MenuState(
@@ -88,7 +96,7 @@ fun MenuItem.Companion.toAction(item: MenuItem): Action {
 @Serializable
 data class MenuStateSnapshot(
     val selected: Action = Action.OPEN,
-    val isVerify: Boolean = false,
+    val isVerify: Boolean = true,
     val isAnalyze: Boolean = true,
     val isConflict: Boolean = true,
     val isComponent: Boolean = true
